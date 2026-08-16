@@ -3,16 +3,17 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Pooya-Oladazimi/chirpy.git/internal/database"
-	"github.com/google/uuid"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/Pooya-Oladazimi/chirpy.git/internal/auth"
+	"github.com/Pooya-Oladazimi/chirpy.git/internal/database"
+	"github.com/google/uuid"
 )
 
 type newChirpData struct {
-	Body   string    `json:"body"`
-	UserId uuid.UUID `json:"user_id"`
+	Body string `json:"body"`
 }
 type Chirp struct {
 	ID        uuid.UUID `json:"id"`
@@ -37,7 +38,9 @@ func (cfg *ApiConfig) CreateChirp(w http.ResponseWriter, r *http.Request) {
 		writeErrorResponse(w, 500, err.Error())
 		return
 	}
-	user, err := cfg.DbQueries.GetUser(r.Context(), userChirpData.UserId)
+	userToken, _ := auth.GetBearerToken(r.Header)
+	userId, _ := auth.ValidateJWT(userToken, cfg.JWT_SECRET)
+	user, err := cfg.DbQueries.GetUser(r.Context(), userId)
 	if err != nil {
 		writeErrorResponse(w, 401, "You need to register to use this endpoint.")
 		return

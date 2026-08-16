@@ -36,15 +36,17 @@ func main() {
 	cfg.FileserverHits.Store(0)
 	cfg.Platform = os.Getenv("PLATFORM")
 	cfg.DbQueries = dbQueries
+	cfg.JWT_SECRET = os.Getenv("JWT_SECRET")
 	fs := http.FileServer(http.Dir("."))
 	serverRouter.Handle(PATH_PREFIX, http.StripPrefix(PATH_PREFIX, cfg.MiddlewareMetricsInc(fs)))
 	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"healthz/", cfg.CheckHealth)
 	serverRouter.HandleFunc(GET_METHOD+ADMIN_PREFIX+"metrics/", cfg.GetHits)
 	serverRouter.HandleFunc(POST_METHOD+ADMIN_PREFIX+"reset/", cfg.Reset)
 	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"users/", cfg.RegisterUser)
-	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"chirps/", cfg.CreateChirp)
+	serverRouter.Handle(POST_METHOD+API_PREFIX+"chirps/", cfg.MiddlewareAuth(http.HandlerFunc(cfg.CreateChirp)))
 	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"chirps/", cfg.GetAllChirps)
 	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"chirps/{chirpID}", cfg.GetChirp)
+	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"login/", cfg.Login)
 	server := &http.Server{
 		Addr:           fmt.Sprintf(":%d", PORT),
 		Handler:        serverRouter,
