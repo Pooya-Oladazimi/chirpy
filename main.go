@@ -47,6 +47,8 @@ func main() {
 	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"chirps/", cfg.GetAllChirps)
 	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"chirps/{chirpID}", cfg.GetChirp)
 	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"login/", cfg.Login)
+	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"revoke/", cfg.RevokeUserToken)
+	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"refresh/", cfg.RefreshUserToken)
 	server := &http.Server{
 		Addr:           fmt.Sprintf(":%d", PORT),
 		Handler:        serverRouter,

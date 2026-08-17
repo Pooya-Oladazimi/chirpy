@@ -17,7 +17,6 @@ type NewUserData struct {
 
 type LoginData struct {
 	NewUserData
-	Expires_in_seconds int `json:"expires_in_seconds"`
 }
 
 type User struct {
@@ -29,7 +28,8 @@ type User struct {
 
 type LoginResp struct {
 	User
-	Token string `json:"token"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (cfg *ApiConfig) RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -67,9 +67,7 @@ func (cfg *ApiConfig) Login(w http.ResponseWriter, r *http.Request) {
 		writeErrorResponse(w, 400, err.Error())
 		return
 	}
-	if userData.Expires_in_seconds == 0 || userData.Expires_in_seconds > ONE_HOUR_IN_SECONDS {
-		userData.Expires_in_seconds = ONE_HOUR_IN_SECONDS
-	}
+
 	user, err := cfg.DbQueries.GetUserByEmail(r.Context(), userData.Email)
 	if err != nil {
 		writeErrorResponse(w, 401, "Unauthorized")
@@ -80,15 +78,26 @@ func (cfg *ApiConfig) Login(w http.ResponseWriter, r *http.Request) {
 		writeErrorResponse(w, 401, "Unauthorized")
 		return
 	}
-	expiresIn := time.Duration(userData.Expires_in_seconds) * time.Second
+	expiresIn := time.Duration(ONE_HOUR_IN_SECONDS) * time.Second
 	singedToken, err := auth.MakeJWT(user.ID, cfg.JWT_SECRET, expiresIn)
 	if err != nil {
 		writeErrorResponse(w, 500, "Something went wrong.")
 		return
 	}
+	refreshTokenDbParams := database.CreateRefreshTokenParams{
+		Token:     auth.MakeRefreshToken(),
+		UserID:    user.ID,
+		ExpiresAt: time.Now().UTC().Add(time.Duration(ONE_DAY_IN_SECONDS) * time.Second),
+	}
+	refreshToken, err := cfg.DbQueries.CreateRefreshToken(r.Context(), refreshTokenDbParams)
+	if err != nil {
+		writeErrorResponse(w, 500, "Something went wrong.")
+		return
+	}
 	userDataResp := LoginResp{
-		User:  User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email},
-		Token: singedToken,
+		User:         User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email},
+		Token:        singedToken,
+		RefreshToken: refreshToken.Token,
 	}
 
 	resp, err := json.Marshal(&userDataResp)
@@ -97,5 +106,47 @@ func (cfg *ApiConfig) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeOkResponse(w, 200, resp)
+}
 
+func (cfg *ApiConfig) RefreshUserToken(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		writeErrorResponse(w, 401, "Unauthorized")
+		return
+	}
+	tokenInDb, err := cfg.DbQueries.GetRefreshToken(r.Context(), token)
+	if err != nil {
+		writeErrorResponse(w, 401, "Unauthorized")
+		return
+	}
+	if time.Now().UTC().After(tokenInDb.ExpiresAt) || tokenInDb.RevokedAt.Valid {
+		writeErrorResponse(w, 401, "Unauthorized")
+		return
+	}
+	expiresIn := time.Duration(ONE_HOUR_IN_SECONDS) * time.Second
+	singedToken, err := auth.MakeJWT(tokenInDb.UserID, cfg.JWT_SECRET, expiresIn)
+	type tokenResp struct {
+		Token string `json:"token"`
+	}
+	tokenResponse := tokenResp{Token: singedToken}
+	tokenRespBody, err := json.Marshal(&tokenResponse)
+	if err != nil {
+		writeErrorResponse(w, 500, "Something went wrong.")
+		return
+	}
+	w.WriteHeader(200)
+	w.Write(tokenRespBody)
+}
+
+func (cfg *ApiConfig) RevokeUserToken(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		writeErrorResponse(w, 401, "Unauthorized")
+		return
+	}
+	if err := cfg.DbQueries.RevokeRefreshToken(r.Context(), token); err != nil {
+		writeErrorResponse(w, 500, "Something went wrong.")
+		return
+	}
+	w.WriteHeader(204)
 }
