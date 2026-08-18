@@ -60,6 +60,39 @@ func (cfg *ApiConfig) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	writeOkResponse(w, 201, resp)
 }
 
+func (cfg *ApiConfig) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	userData := NewUserData{}
+	if err := decoder.Decode(&userData); err != nil {
+		writeErrorResponse(w, 500, "Something went wrong.")
+		return
+	}
+	hashed_pass, err := auth.HashPassword(userData.Password)
+	if err != nil {
+		writeErrorResponse(w, 500, "Something went wrong.")
+		return
+	}
+	userId, ok := r.Context().Value("userIdInToken").(uuid.UUID)
+	if !ok {
+		writeErrorResponse(w, 500, "Something went wrong.")
+		return
+	}
+	updateUserDbData := database.UpdateUserParams{UserID: userId, NewEmail: userData.Email, Password: hashed_pass}
+	updatedUser, err := cfg.DbQueries.UpdateUser(r.Context(), updateUserDbData)
+	if err != nil {
+		writeErrorResponse(w, 500, "Something went wrong.")
+		return
+	}
+	userResp := User{ID: updatedUser.ID, UpdatedAt: updatedUser.UpdatedAt, CreatedAt: updatedUser.CreatedAt, Email: updatedUser.Email}
+	userRespBody, err := json.Marshal(&userResp)
+	if err != nil {
+		writeErrorResponse(w, 500, "Something went wrong.")
+		return
+	}
+	w.WriteHeader(200)
+	w.Write(userRespBody)
+}
+
 func (cfg *ApiConfig) Login(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	userData := LoginData{}

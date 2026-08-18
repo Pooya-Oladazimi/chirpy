@@ -14,12 +14,14 @@ import (
 )
 
 const (
-	PORT         = 8080
-	PATH_PREFIX  = "/app/"
-	API_PREFIX   = "/api/"
-	ADMIN_PREFIX = "/admin/"
-	GET_METHOD   = "GET "
-	POST_METHOD  = "POST "
+	PORT          = 8080
+	PATH_PREFIX   = "/app/"
+	API_PREFIX    = "/api/"
+	ADMIN_PREFIX  = "/admin/"
+	GET_METHOD    = "GET "
+	POST_METHOD   = "POST "
+	PUT_METHOD    = "PUT "
+	DELETE_METHOD = "DELETE "
 )
 
 func main() {
@@ -39,16 +41,18 @@ func main() {
 	cfg.JWT_SECRET = os.Getenv("JWT_SECRET")
 	fs := http.FileServer(http.Dir("."))
 	serverRouter.Handle(PATH_PREFIX, http.StripPrefix(PATH_PREFIX, cfg.MiddlewareMetricsInc(fs)))
-	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"healthz/", cfg.CheckHealth)
-	serverRouter.HandleFunc(GET_METHOD+ADMIN_PREFIX+"metrics/", cfg.GetHits)
-	serverRouter.HandleFunc(POST_METHOD+ADMIN_PREFIX+"reset/", cfg.Reset)
-	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"users/", cfg.RegisterUser)
-	serverRouter.Handle(POST_METHOD+API_PREFIX+"chirps/", cfg.MiddlewareAuth(http.HandlerFunc(cfg.CreateChirp)))
-	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"chirps/", cfg.GetAllChirps)
+	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"healthz", cfg.CheckHealth)
+	serverRouter.HandleFunc(GET_METHOD+ADMIN_PREFIX+"metrics", cfg.GetHits)
+	serverRouter.HandleFunc(POST_METHOD+ADMIN_PREFIX+"reset", cfg.Reset)
+	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"users", cfg.RegisterUser)
+	serverRouter.Handle(PUT_METHOD+API_PREFIX+"users", cfg.MiddlewareAuth(http.HandlerFunc(cfg.UpdateUser)))
+	serverRouter.Handle(POST_METHOD+API_PREFIX+"chirps", cfg.MiddlewareAuth(http.HandlerFunc(cfg.CreateChirp)))
+	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"chirps", cfg.GetAllChirps)
 	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"chirps/{chirpID}", cfg.GetChirp)
-	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"login/", cfg.Login)
-	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"revoke/", cfg.RevokeUserToken)
-	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"refresh/", cfg.RefreshUserToken)
+	serverRouter.Handle(DELETE_METHOD+API_PREFIX+"chirps/{chirpID}", cfg.MiddlewareAuth(http.HandlerFunc(cfg.DeleteChirp)))
+	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"login", cfg.Login)
+	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"revoke", cfg.RevokeUserToken)
+	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"refresh", cfg.RefreshUserToken)
 	server := &http.Server{
 		Addr:           fmt.Sprintf(":%d", PORT),
 		Handler:        serverRouter,

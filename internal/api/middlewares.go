@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/Pooya-Oladazimi/chirpy.git/internal/auth"
@@ -26,6 +27,8 @@ func (cfg *ApiConfig) MiddlewareAuth(next http.Handler) http.Handler {
 			writeErrorResponse(w, 401, "Unauthorized")
 			return
 		}
+		ctx := context.WithValue(r.Context(), "userIdInToken", userId)
+		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
 	})
 }

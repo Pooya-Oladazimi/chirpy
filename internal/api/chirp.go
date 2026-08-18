@@ -81,6 +81,33 @@ func (cfg *ApiConfig) GetChirp(w http.ResponseWriter, r *http.Request) {
 	writeOkResponse(w, 200, chirpResp)
 }
 
+func (cfg *ApiConfig) DeleteChirp(w http.ResponseWriter, r *http.Request) {
+	chirpId, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		writeErrorResponse(w, 404, "Chirp not found.")
+		return
+	}
+	userId, ok := r.Context().Value("userIdInToken").(uuid.UUID)
+	if !ok {
+		writeErrorResponse(w, 401, "Unauthorized")
+		return
+	}
+	chirp, err := cfg.DbQueries.GetChirp(r.Context(), chirpId)
+	if err != nil {
+		writeErrorResponse(w, 404, "Chirp not found.")
+		return
+	}
+	if chirp.UserID != userId {
+		writeErrorResponse(w, 403, "You are not authorized to perform this action.")
+		return
+	}
+	if err := cfg.DbQueries.DeleteChirp(r.Context(), chirp.ID); err != nil {
+		writeErrorResponse(w, 500, "Something went wrong.")
+		return
+	}
+	w.WriteHeader(204)
+}
+
 func (cfg *ApiConfig) GetAllChirps(w http.ResponseWriter, r *http.Request) {
 	chirps, err := cfg.DbQueries.GetAllChirps(r.Context())
 	if err != nil {
