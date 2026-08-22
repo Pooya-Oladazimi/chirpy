@@ -20,10 +20,11 @@ type LoginData struct {
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 type LoginResp struct {
@@ -51,7 +52,7 @@ func (cfg *ApiConfig) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		writeErrorResponse(w, 500, err.Error())
 		return
 	}
-	userDataResp := User{ID: newUser.ID, CreatedAt: newUser.CreatedAt, UpdatedAt: newUser.UpdatedAt, Email: newUser.Email}
+	userDataResp := User{ID: newUser.ID, CreatedAt: newUser.CreatedAt, UpdatedAt: newUser.UpdatedAt, Email: newUser.Email, IsChirpyRed: newUser.IsChirpyRed}
 	resp, err := json.Marshal(&userDataResp)
 	if err != nil {
 		writeErrorResponse(w, 500, err.Error())
@@ -83,7 +84,7 @@ func (cfg *ApiConfig) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		writeErrorResponse(w, 500, "Something went wrong.")
 		return
 	}
-	userResp := User{ID: updatedUser.ID, UpdatedAt: updatedUser.UpdatedAt, CreatedAt: updatedUser.CreatedAt, Email: updatedUser.Email}
+	userResp := User{ID: updatedUser.ID, UpdatedAt: updatedUser.UpdatedAt, CreatedAt: updatedUser.CreatedAt, Email: updatedUser.Email, IsChirpyRed: updatedUser.IsChirpyRed}
 	userRespBody, err := json.Marshal(&userResp)
 	if err != nil {
 		writeErrorResponse(w, 500, "Something went wrong.")
@@ -128,7 +129,7 @@ func (cfg *ApiConfig) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userDataResp := LoginResp{
-		User:         User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email},
+		User:         User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email, IsChirpyRed: user.IsChirpyRed},
 		Token:        singedToken,
 		RefreshToken: refreshToken.Token,
 	}

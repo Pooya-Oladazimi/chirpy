@@ -32,3 +32,18 @@ func (cfg *ApiConfig) MiddlewareAuth(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func (cfg *ApiConfig) MiddlewarePolkaAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiKey, err := auth.GetApiKey(r.Header)
+		if err != nil {
+			writeErrorResponse(w, 401, "Unauthorized")
+			return
+		}
+		if apiKey != cfg.POLKA_KEY {
+			writeErrorResponse(w, 401, "Unauthorized")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}

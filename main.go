@@ -39,6 +39,7 @@ func main() {
 	cfg.Platform = os.Getenv("PLATFORM")
 	cfg.DbQueries = dbQueries
 	cfg.JWT_SECRET = os.Getenv("JWT_SECRET")
+	cfg.POLKA_KEY = os.Getenv("POLKA_KEY")
 	fs := http.FileServer(http.Dir("."))
 	serverRouter.Handle(PATH_PREFIX, http.StripPrefix(PATH_PREFIX, cfg.MiddlewareMetricsInc(fs)))
 	serverRouter.HandleFunc(GET_METHOD+API_PREFIX+"healthz", cfg.CheckHealth)
@@ -53,6 +54,7 @@ func main() {
 	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"login", cfg.Login)
 	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"revoke", cfg.RevokeUserToken)
 	serverRouter.HandleFunc(POST_METHOD+API_PREFIX+"refresh", cfg.RefreshUserToken)
+	serverRouter.Handle(POST_METHOD+API_PREFIX+"polka/webhooks", cfg.MiddlewarePolkaAuth(http.HandlerFunc(cfg.PolkaWebHooks)))
 	server := &http.Server{
 		Addr:           fmt.Sprintf(":%d", PORT),
 		Handler:        serverRouter,
